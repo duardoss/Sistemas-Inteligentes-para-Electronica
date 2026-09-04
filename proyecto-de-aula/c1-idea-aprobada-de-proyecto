@@ -1,1 +1,19 @@
+Descripción del proyecto
+
+El proyecto consiste en el desarrollo de un "dispositivo portátil de asistencia para personas con discapacidad visual", 
+capaz de analizar visualmente el entorno y proporcionar información auditiva sobre los caminos disponibles. 
+La propuesta surge como respuesta a la dificultad que enfrentan las personas invidentes al desplazarse por espacios donde 
+no existe una adecuada señalización táctil o donde las condiciones del entorno dificultan el uso convencional del bastón. 
+
+El sistema estará compuesto principalmente por una ESP32-CAM, encargada de capturar imágenes del entorno, y una ESP32-S3-CAM, 
+que realizará el procesamiento de la información mediante un modelo de inteligencia artificial ejecutado localmente. Al accionar 
+el dispositivo, la cámara capturará una imagen del entorno y la enviará al módulo de procesamiento, donde el modelo de IA analizará 
+la escena para identificar posibles caminos o zonas transitables y determinar su dirección. Una vez procesada la imagen, el sistema 
+transformará la información obtenida en indicaciones auditivas, las cuales serán reproducidas mediante un pequeño amplificador y una 
+bocina, permitiendo que el usuario reciba instrucciones sin necesidad de observar una pantalla. 
+
+El dispositivo funcionará únicamente cuando sea activado por el usuario, contribuyendo al ahorro de energía y evitando un procesamiento 
+constante. El objetivo principal es desarrollar un sistema portátil, autónomo y de bajo costo que utilice inteligencia artificial y 
+sistemas embebidos para complementar las herramientas tradicionales de orientación, proporcionando una alternativa tecnológica que pueda 
+facilitar el desplazamiento de personas con discapacidad visual en entornos que no cuentan con infraestructura adecuada.
 
