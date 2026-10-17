@@ -1,4 +1,5 @@
-<!-- Comentado para que no aparezca al inicio del texto, github no lo interpreta aún sin comentar
+<!-- Comentado para que no aparezca al inicio del texto, github no lo interpreta aún sin comentar,
+Para ver todo con la fuente igual, usar otra herramienta para visualizar y descomentar esto:
 <style>
   body, p, li, td, th, h1, h2, h3, h4, h5, h6 {
     font-family: Arial, Helvetica, sans-serif;
@@ -6,7 +7,7 @@
   }
   h1, h2, h3, h4, h5, h6 { font-weight: bold; }
 </style>
---> Para ver todo con la fuente igual, usar otra herramienta para visualizar y descomentar esto
+--> 
 # Sistema Embebido de detección de somnolencia al volante mediante Visión por Computadora y TinyML sobre ESP32-S3 CAM
 
 ---
@@ -209,9 +210,9 @@ La inferencia de ~1.5 s es adecuada para el caso de uso: un microsueño o cabece
 ---
 
 ## 5. Componente Técnico
-
+<p align="center">
 ![Componente Técnico](./Arqui.jpeg)
-
+</p>
 ---
 
 ## 6. Dificultades Encontradas y Soluciones Aplicadas
