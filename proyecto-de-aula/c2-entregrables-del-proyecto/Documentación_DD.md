@@ -211,7 +211,7 @@ La inferencia de ~1.5 s es adecuada para el caso de uso: un microsueño o cabece
 
 ## 5. Componente Técnico
 <p align="center">
-![Componente Técnico](./Arqui.jpeg)
+  <img src="./Arqui.jpeg" alt="Componente Técnico" width="40%">
 </p>
 ---
 
