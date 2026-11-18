@@ -14,6 +14,10 @@ Uso:
     python drowsy_live.py --model-dir /home/admin/drowsy_models/NOMBRE_DE_LA_CORRIDA
 Opciones: --landmarker RUTA (por defecto face_landmarker.task), --camera 0,
           --width 640 --height 480 --fps 30, --log-csv salida.csv, --no-window
+Criterio de alarma (si no se indica, se usa el del contract.json de la corrida):
+          --threshold 0.9      probabilidad minima de la clase de alarma
+          --hold-seconds 3     segundos seguidos por encima del umbral
+          --refractory 5       segundos de silencio despues de una alarma
 Teclas: q o ESC para salir.
 
 Como se usa: al empezar, MIRA AL FRENTE con la cabeza en tu postura normal durante
@@ -68,6 +72,9 @@ def main():
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--log-csv", default=None)
     ap.add_argument("--no-window", action="store_true")
+    ap.add_argument("--threshold", type=float, default=None)
+    ap.add_argument("--hold-seconds", type=float, default=None)
+    ap.add_argument("--refractory", type=float, default=None)
     args = ap.parse_args()
 
     mdir = Path(args.model_dir).expanduser()
@@ -85,8 +92,18 @@ def main():
     thr = alarm_cfg.get("threshold", DEFAULT_ALARM["threshold"])
     hold = alarm_cfg.get("hold_windows", DEFAULT_ALARM["hold_windows"])
     refractory = alarm_cfg.get("refractory_s", DEFAULT_ALARM["refractory_s"])
-    print(f"Modelo: {contract['run_id']} | alarma: '{names[target]}' >= {thr} durante {hold} ventana(s) seguida(s), "
-          f"silencio {refractory} s")
+    step_s = pp.STRIDE_STEPS * pp.STEP_MS / 1000.0     # una evaluacion cada 0.5 s
+    source = "contract.json" if alarm_cfg else "valores por defecto"
+    if args.threshold is not None or args.hold_seconds is not None or args.refractory is not None:
+        source = "linea de comandos (sobrescribe el contract.json)"
+    if args.threshold is not None:
+        thr = args.threshold
+    if args.hold_seconds is not None:
+        hold = max(1, int(np.ceil(args.hold_seconds / step_s - 1e-9)))
+    if args.refractory is not None:
+        refractory = args.refractory
+    print(f"Modelo: {contract['run_id']} | alarma: '{names[target]}' >= {thr} durante {hold} evaluacion(es) seguida(s) "
+          f"(~{hold * step_s:.1f} s), silencio {refractory} s | criterio de: {source}")
 
     sess = ort.InferenceSession(str(mdir / "model.onnx"), providers=["CPUExecutionProvider"])
     in_name = sess.get_inputs()[0].name
@@ -137,6 +154,8 @@ def main():
             if not args.no_window:
                 view = frame.copy()
                 extra = [f"{fps:.1f} FPS | {pipe.state}"]
+                if pipe.state == "en_vivo":
+                    extra.append(f"sobre umbral: {alarm.run}/{alarm.hold} evaluaciones")
                 if pipe.fail_msg:
                     extra.append(pipe.fail_msg[:48])
                 draw_overlay(view, lm, feats, extra)
