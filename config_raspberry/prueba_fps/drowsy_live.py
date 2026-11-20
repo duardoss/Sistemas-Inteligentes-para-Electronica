@@ -1,9 +1,9 @@
 """
-drowsy_live.py  -- se corre en la maquina virtual / Raspberry Pi (con pantalla)
+drowsy_live_buzzer.py  -- se corre en la maquina virtual / Raspberry Pi (con pantalla)
 
 Cámara -> MediaPipe (face_features.py) -> tuberia en vivo (live_pipeline.py) ->
 modelo ONNX -> ventana de OpenCV con las probabilidades y una ALARMA VISUAL.
-(El buzzer por GPIO se agrega despues; no se usa aqui.)
+El buzzer en GPIO17 sigue el mismo intervalo de la ALARMA VISUAL.
 
 Archivos que deben estar en la MISMA carpeta que este script:
     face_features.py, camera.py   (los de tu proyecto)
@@ -11,7 +11,7 @@ Archivos que deben estar en la MISMA carpeta que este script:
 y aparte: face_landmarker.task y la carpeta de la corrida (model.onnx + contract.json).
 
 Uso:
-    python drowsy_live.py --model-dir /home/admin/drowsy_models/NOMBRE_DE_LA_CORRIDA
+    python drowsy_live_buzzer.py --model-dir /home/admin/drowsy_models/NOMBRE_DE_LA_CORRIDA
 Opciones: --landmarker RUTA (por defecto face_landmarker.task), --camera 0,
           --width 640 --height 480 --fps 30, --log-csv salida.csv, --no-window
 Criterio de alarma (si no se indica, se usa el del contract.json de la corrida):
@@ -33,6 +33,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import onnxruntime as ort
+from gpiozero import Buzzer
 
 import preprocess as pp
 from camera import ThreadedCamera
@@ -111,6 +112,12 @@ def main():
     cam = ThreadedCamera(args.camera, args.width, args.height, args.fps)
     pipe, alarm = LivePipeline(), AlarmLogic(thr, hold, refractory)
 
+    # El buzzer no evalua probabilidades ni tiene un umbral independiente.
+    # Solo replica la vigencia del aviso visual (alarm_until).
+    buzzer = Buzzer(17)
+    buzzer.off()
+    buzzer_active = False
+
     log_f = log_w = None
     if args.log_csv:
         log_f = open(args.log_csv, "w", newline="", encoding="utf-8")
@@ -122,6 +129,14 @@ def main():
     print("Calibrando: mira al frente con tu postura normal durante 30 s...")
     try:
         while True:
+            # Mantener la salida sincronizada aun si la camara tarda o falla.
+            visual_alarm_active = pipe.state != "calibrando" and time.monotonic() < alarm_until
+            if visual_alarm_active != buzzer_active:
+                if visual_alarm_active:
+                    buzzer.on()
+                else:
+                    buzzer.off()
+                buzzer_active = visual_alarm_active
             frame, ts, count = cam.read(last_count, timeout=2.0)
             if frame is None:
                 print("Sin cuadros de la camara (2 s). ¿Esta conectada a la maquina virtual?")
@@ -140,6 +155,15 @@ def main():
                     print(f"[{t_ms / 1000:7.1f} s] *** ALARMA: {names[target]} p={probs[target]:.2f} ***")
                 if log_w:
                     log_w.writerow([f"{t_ms / 1000:.2f}"] + [f"{p:.4f}" for p in probs] + [int(fired)])
+
+            # Usar exactamente la condicion del cartel, sin otro threshold.
+            visual_alarm_active = pipe.state != "calibrando" and time.monotonic() < alarm_until
+            if visual_alarm_active != buzzer_active:
+                if visual_alarm_active:
+                    buzzer.on()
+                else:
+                    buzzer.off()
+                buzzer_active = visual_alarm_active
 
             n_frames += 1
             now = time.monotonic()
@@ -162,7 +186,7 @@ def main():
                 if pipe.state == "calibrando":
                     left = max(0.0, (1 - pipe.calib_progress) * pp.CAL_SECONDS)
                     banner(view, f"CALIBRANDO: mira al frente ({left:.0f} s)", (160, 100, 0))
-                elif time.monotonic() < alarm_until:
+                elif visual_alarm_active:
                     banner(view, f"ALARMA: {names[target].upper()}", (0, 0, 220))
                 if probs is not None and pipe.state == "en_vivo":
                     draw_bars(view, names, probs, target, thr)
@@ -173,6 +197,9 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        # Apagado garantizado al salir, incluso por Ctrl+C o una excepcion.
+        buzzer.off()
+        buzzer.close()
         cam.release()
         extractor.close()
         if log_f:
